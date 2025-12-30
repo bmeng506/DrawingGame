@@ -2,11 +2,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import type { DrawData, ToolSettings } from '../types';
+import Toolbar from './Toolbar'
 
 export default function Canvas() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [socket, setSocket] = useState<Socket | null>(null);
+    const [tools, setTools] = useState<ToolSettings>({
+        color: '#000000',
+        lineWidth: 5,
+        isEraser: false
+    });
 
     // Connect to server when component mounts
     useEffect(() => {
@@ -14,24 +21,37 @@ export default function Canvas() {
         setSocket(newSocket);
 
         // Listen for drawing from other players
-        newSocket.on('draw', (data: { x: number; y: number; isStart: boolean }) => {
-            const canvas = canvasRef.current;
-            const ctx = canvas?.getContext('2d');
-            if (ctx) {
-                if (data.isStart) {
-                    ctx.beginPath();
-                    ctx.moveTo(data.x, data.y);
-                } else {
-                    ctx.lineTo(data.x, data.y);
-                    ctx.stroke();
-                }
-            }
+        newSocket.on('draw', (data: DrawData) => {
+            drawOnCanvas(data);
         });
 
         return () => {
             newSocket.close();
         };
     }, []);
+
+    const drawOnCanvas = (data: DrawData) => {
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (ctx) {
+            if (data.isEraser) {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = data.lineWidth;
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = data.color;
+                ctx.lineWidth = data.lineWidth;
+            }
+
+            if (data.isStart) {
+                ctx.beginPath();
+                ctx.moveTo(data.x, data.y);
+            } else {
+                ctx.lineTo(data.x, data.y);
+                ctx.stroke();
+            }
+        }
+    };
 
     const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
         setIsDrawing(true);
