@@ -1,8 +1,9 @@
 import express, { Request, Response } from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import type { Socket } from "socket.io";
 import cors from "cors";
+import type { Socket } from "socket.io";
+import type { DrawData } from './types';
 
 const app = express();
 app.use(cors());
@@ -28,8 +29,12 @@ io.on('connection', (socket: Socket) => {
     players.push(socket.id);
 
     // When a player draws, broadcast to everyone else
-    socket.on('draw', (data: { x: number; y: number; isStart: boolean}) => {
+    socket.on('draw', (data: DrawData) => {
         socket.broadcast.emit('draw', data);
+    });
+
+    socket.on('clear', () => {
+        socket.broadcast.emit('clear');
     });
 
     socket.on('disconnect', () => {
